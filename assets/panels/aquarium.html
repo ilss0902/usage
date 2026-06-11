@@ -589,18 +589,11 @@
     .hide-codex [data-card="codex"] { display: none; }
     .hide-claude [data-card="claude"] { display: none; }
     .hide-claude-switch { display: none; }
-    .hide-claude .hide-claude-switch {
-      display: inline-flex;
-      position: fixed;
-      top: 14px;
-      right: 14px;
-      z-index: 20;
-    }
+    .hide-claude [data-card="codex"] .hide-claude-switch { display: inline-flex; }
   </style>
 </head>
 <body>
   <canvas class="bubble-canvas" aria-hidden="true"></canvas>
-  <button class="switch hide-claude-switch" data-action="switch" data-i18n="switch_panel">Switch Panel</button>
   <div class="sparkles" aria-hidden="true">
     <span class="spark" style="--x: 12%; --y: 18%; --size: 3px; --duration: 4.6s; --delay: -1.2s"></span>
     <span class="spark" style="--x: 72%; --y: 11%; --size: 2px; --duration: 5.2s; --delay: -2.1s"></span>
@@ -638,6 +631,7 @@
           <div class="header-copy">
             <h1 data-i18n="codex_name">Codex</h1>
           </div>
+          <button class="switch hide-claude-switch" data-action="switch" data-i18n="switch_panel">Switch Panel</button>
         </header>
         <div class="row" data-row="session"></div>
         <div class="row" data-row="weekly"></div>

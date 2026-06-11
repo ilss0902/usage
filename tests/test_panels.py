@@ -123,6 +123,8 @@ def test_panels_with_switch_in_hidden_claude_card_have_fallback_switch() -> None
         if panel_path.name in affected_panels:
             assert "hide-claude-switch" in html, panel_path.name
             assert html.count('data-action="switch"') >= 2, panel_path.name
+            fallback_index = html.index('<button class="switch hide-claude-switch"')
+            assert fallback_index > html.index('data-card="codex"'), panel_path.name
 
 
 def test_classic_project_header_expands_for_action_row() -> None:

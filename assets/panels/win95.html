@@ -462,17 +462,10 @@
     .hide-codex [data-card="codex"] { display: none; }
     .hide-claude [data-card="claude"] { display: none; }
     .hide-claude-switch { display: none; }
-    .hide-claude .hide-claude-switch {
-      display: inline-flex;
-      position: fixed;
-      top: 14px;
-      right: 14px;
-      z-index: 20;
-    }
+    .hide-claude [data-card="codex"] .hide-claude-switch { display: inline-flex; }
   </style>
 </head>
 <body>
-  <button class="switch hide-claude-switch" data-action="switch" data-i18n="switch_panel">Switch Panel</button>
   <main class="wrap">
     <section class="card" data-card="claude" style="--accent: var(--claude)">
       <header class="brand">
@@ -488,6 +481,7 @@
       <header class="brand">
         <img src="{{CODEX_ICON}}" alt="">
         <h1 data-i18n="codex_name">Codex</h1>
+        <button class="switch hide-claude-switch" data-action="switch" data-i18n="switch_panel">⇄ Switch Panel</button>
       </header>
       <div class="row" data-row="session"></div>
       <div class="row" data-row="weekly"></div>
