@@ -104,6 +104,23 @@ def test_html_panels_place_analyze_and_cli_in_project_header() -> None:
         assert 'class="action" data-action="analyze"' not in html
 
 
+def test_panels_with_switch_in_hidden_claude_card_have_fallback_switch() -> None:
+    panel_dir = Path(__file__).resolve().parent.parent / "assets" / "panels"
+    affected_panels = {
+        "classic.html",
+        "lepidoptera.html",
+        "matrix.html",
+        "newspaper.html",
+        "win95.html",
+    }
+
+    for panel_path in sorted(panel_dir.glob("*.html")):
+        html = panel_path.read_text(encoding="utf-8")
+        if panel_path.name in affected_panels:
+            assert "hide-claude-switch" in html, panel_path.name
+            assert html.count('data-action="switch"') >= 2, panel_path.name
+
+
 def test_classic_project_header_expands_for_action_row() -> None:
     panel_path = Path(__file__).resolve().parent.parent / "assets" / "panels" / "classic.html"
     html = panel_path.read_text(encoding="utf-8")

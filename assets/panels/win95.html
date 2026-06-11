@@ -461,9 +461,18 @@
 
     .hide-codex [data-card="codex"] { display: none; }
     .hide-claude [data-card="claude"] { display: none; }
+    .hide-claude-switch { display: none; }
+    .hide-claude .hide-claude-switch {
+      display: inline-flex;
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      z-index: 20;
+    }
   </style>
 </head>
 <body>
+  <button class="switch hide-claude-switch" data-action="switch" data-i18n="switch_panel">Switch Panel</button>
   <main class="wrap">
     <section class="card" data-card="claude" style="--accent: var(--claude)">
       <header class="brand">
