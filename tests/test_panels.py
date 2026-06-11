@@ -107,10 +107,14 @@ def test_html_panels_place_analyze_and_cli_in_project_header() -> None:
 def test_panels_with_switch_in_hidden_claude_card_have_fallback_switch() -> None:
     panel_dir = Path(__file__).resolve().parent.parent / "assets" / "panels"
     affected_panels = {
+        "aquarium.html",
+        "black_hole.html",
         "classic.html",
+        "cloud_observation.html",
         "lepidoptera.html",
         "matrix.html",
         "newspaper.html",
+        "prism_arcade.html",
         "win95.html",
     }
 
