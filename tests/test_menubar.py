@@ -144,6 +144,7 @@ def _build_popover_state(
         show_install_button=(
             outcome.state == PollState.TOKEN_ERROR and delegate._statusline_setup_available()
         ),
+        hide_claude=menubar._hide_claude_enabled(),
         hide_codex=menubar._hide_codex_enabled(),
         codex_stale=None,
     )
@@ -440,6 +441,7 @@ def test_switch_panel_cancel_closes_visible_popover(
 
     class FakePanel:
         id = "classic"
+        claude_card_height = 0.0
         codex_card_height = 0.0
 
         def preferred_size(self) -> tuple[float, float]:
@@ -927,6 +929,44 @@ def test_popover_size_has_positive_dimensions() -> None:
 
     assert size.width > 0
     assert size.height > 0
+
+
+def test_popover_size_deducts_hidden_claude_card() -> None:
+    class FakePanel:
+        claude_card_height = 123.0
+        codex_card_height = 50.0
+
+        def preferred_size(self) -> tuple[float, float]:
+            return (300.0, 400.0)
+
+    state = menubar._empty_state()
+    state.hide_claude = True
+
+    size = menubar._popover_size(state, FakePanel())
+
+    assert size.width == 300.0
+    assert size.height == 277.0
+
+
+def test_compose_title_hides_claude_when_disabled() -> None:
+    state = menubar._empty_state()
+    state.hide_claude = True
+    app = SimpleNamespace(codex_5h_pct=42.0)
+
+    title = menubar.AppDelegate._compose_title(app, state)
+
+    assert title == "📜 42%"
+
+
+def test_compose_title_falls_back_when_all_sections_hidden() -> None:
+    state = menubar._empty_state()
+    state.hide_claude = True
+    state.hide_codex = True
+    app = SimpleNamespace(codex_5h_pct=42.0)
+
+    title = menubar.AppDelegate._compose_title(app, state)
+
+    assert title == "usage"
 
 
 def test_project_rows_empty(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -95,6 +95,8 @@ def test_html_panels_place_analyze_and_cli_in_project_header() -> None:
         assert project_index < analyze_index < footer_index, panel_path.name
         assert project_index < cli_index < footer_index, panel_path.name
         assert html.count('data-action="analyze"') == 1, panel_path.name
+        assert "hide-claude" in html, panel_path.name
+        assert "hideClaude" in html, panel_path.name
         assert "data-cli-panel" not in html
         assert "localStorage" not in html
         assert "renderCliStatus" not in html
