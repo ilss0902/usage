@@ -342,6 +342,10 @@ def build_popover_state(
             value=_status_message_value(outcome, "status_no_data", language),
         )
 
+    if hide_claude:
+        status_text = ""
+        show_install_button = False
+
     return PopoverState(
         language=language,
         claude_session=claude_session,

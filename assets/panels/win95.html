@@ -692,7 +692,10 @@
       const status = document.querySelector('[data-footer="status"]');
       const today = document.querySelector('[data-footer="today"]');
       if (rate) rate.textContent = state.footer.rate || t("rate_text", { value: "--" });
-      if (status) status.textContent = state.footer.status || t("status_text", { value: "--" });
+      if (status) {
+        status.hidden = state.footer.showStatus === false;
+        status.textContent = state.footer.showStatus === false ? "" : (state.footer.status || t("status_text", { value: "--" }));
+      }
       if (today) today.textContent = state.footer.today || t("today_text", { cost: "0.00", tokens: "0" });
     };
 

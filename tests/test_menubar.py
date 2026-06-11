@@ -1740,3 +1740,20 @@ def test_state_from_outcome_shows_setup_button_for_codex_only(
     )
 
     assert state.show_install_button is True
+
+
+def test_state_hides_claude_status_when_claude_section_hidden(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    delegate = menubar.AppDelegate.alloc().initWithMock_interval_(False, 60)
+    monkeypatch.setattr(delegate, "_statusline_setup_available", lambda: True)
+    monkeypatch.setattr(menubar, "_hide_claude_enabled", lambda: True)
+
+    state = _build_popover_state(
+        delegate,
+        PollOutcome(state=PollState.TOKEN_ERROR, message="missing"),
+        _codex_rows(delegate)[0],
+    )
+
+    assert state.status_text == ""
+    assert state.show_install_button is False

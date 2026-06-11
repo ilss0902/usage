@@ -449,6 +449,7 @@ def _state_payload(state: PopoverState) -> dict[str, object]:
         "footer": {
             "rate": state.rate_text,
             "status": state.status_text,
+            "showStatus": bool(state.status_text),
             "today": state.today_text,
             "showInstall": state.show_install_button,
         },
