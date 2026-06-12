@@ -503,8 +503,7 @@
 
     .hide-codex [data-card="codex"] { display: none; }
     .hide-claude [data-card="claude"] { display: none; }
-    .hide-claude-switch { display: none; }
-    .hide-claude [data-card="codex"] .hide-claude-switch { display: inline-flex; }
+    .hide-claude .footer .action[data-action="switch"] { display: inline-block; }
   </style>
 </head>
 <body>
@@ -530,7 +529,6 @@
           <div class="header-copy">
             <h1 data-i18n="codex_name">Codex</h1>
           </div>
-          <button class="switch hide-claude-switch" data-action="switch" data-i18n="switch_panel">Switch Panel</button>
         </header>
         <div class="row" data-row="session"></div>
         <div class="row" data-row="weekly"></div>

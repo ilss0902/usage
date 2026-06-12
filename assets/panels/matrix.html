@@ -423,8 +423,6 @@
 
     .hide-codex [data-card="codex"] { display: none; }
     .hide-claude [data-card="claude"] { display: none; }
-    .hide-claude-switch { display: none; }
-    .hide-claude [data-card="codex"] .hide-claude-switch { display: inline-flex; }
   </style>
 </head>
 <body>
@@ -445,7 +443,6 @@
       <header class="brand">
         <img src="{{CODEX_ICON}}" alt="">
         <h1 data-i18n="codex_name"></h1>
-        <button class="switch hide-claude-switch" data-action="switch">[ SWITCH ]</button>
       </header>
       <div class="row" data-row="session"></div>
       <div class="row" data-row="weekly"></div>
@@ -727,9 +724,28 @@
       }
     }
 
+    function relocateSwitchButton(state) {
+      // The switch button lives in the Claude card header; when that card is
+      // hidden, move it to the next visible home so the menu stays reachable.
+      const button = document.querySelector('[data-action="switch"]');
+      if (!button) return;
+      let host = document.querySelector('[data-card="claude"] .brand');
+      let className = "switch";
+      if (state.hideClaude && !state.hideCodex) {
+        host = document.querySelector('[data-card="codex"] .brand');
+      } else if (state.hideClaude && state.hideCodex) {
+        host = document.querySelector(".footer .actions");
+        className = "action";
+      }
+      if (!host) return;
+      button.className = className;
+      if (button.parentElement !== host) host.appendChild(button);
+    }
+
     window.usageApplyState = function usageApplyState(state) {
       document.documentElement.classList.toggle('hide-codex', !!state.hideCodex);
       document.documentElement.classList.toggle('hide-claude', !!state.hideClaude);
+      relocateSwitchButton(state);
       currentLanguage = I18N[state.language] ? state.language : currentLanguage;
       applyStaticText();
       applyCard("claude", state.claude);

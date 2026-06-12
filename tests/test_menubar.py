@@ -365,27 +365,41 @@ def test_switch_panel_menu_contains_update_items(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(menubar, "NSMenuItem", _FakeMenuItem)
     monkeypatch.setattr("menubar.panels.all_panels", lambda: panels)
     monkeypatch.setattr("menubar.login_item.is_enabled", lambda: False)
-    monkeypatch.setattr(menubar, "_load_preferences", lambda: {"auto_update_check": True})
+    monkeypatch.setattr(menubar, "_load_preferences", lambda: {"hide_codex_section": True})
 
     _FakeMenu.instances = []
     menubar.AppDelegate.switchPanel_(delegate, object())
 
-    # Two menus are built: the main popup and the panel-themes submenu.
-    main_menu, panel_submenu = _FakeMenu.instances[0], _FakeMenu.instances[1]
+    # Three menus are built: the main popup, the panel-themes submenu, and the
+    # provider-visibility submenu.
+    main_menu, panel_submenu, hide_submenu = (
+        _FakeMenu.instances[0],
+        _FakeMenu.instances[1],
+        _FakeMenu.instances[2],
+    )
     main_titles = [item.title for item in main_menu.items]
 
-    # Settings still live on the main menu.
-    assert "Automatically Check for Updates" in main_titles
-    auto_item = next(
-        item for item in main_menu.items if item.title == "Automatically Check for Updates"
-    )
-    assert auto_item.state == 1
+    # The auto-update row is gone — update checks just stay on by default.
+    assert "Automatically Check for Updates" not in main_titles
+    assert "Usage Alert Notifications" in main_titles
 
     # Panel themes are collapsed into a submenu, not listed inline on the main menu.
     assert "Default" not in main_titles
     assert [item.title for item in panel_submenu.items] == ["Default", "Matrix"]
     parent = next(item for item in main_menu.items if item.submenu is panel_submenu)
     assert parent.submenu is panel_submenu
+
+    # Provider hide toggles are collapsed into one "Hide Sections" submenu, with
+    # the checkmark reflecting the stored preference.
+    assert "Hide Sections" in main_titles
+    assert [item.title for item in hide_submenu.items] == ["Claude Code", "Codex"]
+    hide_parent = next(item for item in main_menu.items if item.submenu is hide_submenu)
+    assert hide_parent.title == "Hide Sections"
+    claude_item, codex_item = hide_submenu.items
+    assert claude_item.action == "toggleHideClaude:"
+    assert claude_item.state == 0
+    assert codex_item.action == "toggleHideCodex:"
+    assert codex_item.state == 1
 
     # Resume Last Session is a single tooltip-backed toggle (no group header, no indent).
     butler = next(item for item in main_menu.items if item.action == "toggleSessionResume:")
@@ -931,42 +945,67 @@ def test_popover_size_has_positive_dimensions() -> None:
     assert size.height > 0
 
 
-def test_popover_size_deducts_hidden_claude_card() -> None:
+def test_hide_claude_enabled_reads_preferences(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(menubar, "_load_preferences", lambda: {"hide_claude_section": True})
+
+    assert menubar._hide_claude_enabled() is True
+    assert menubar._hide_claude_enabled({"hide_claude_section": False}) is False
+    assert menubar._hide_claude_enabled({}) is False
+
+
+def test_popover_size_deducts_hidden_cards(monkeypatch: pytest.MonkeyPatch) -> None:
     class FakePanel:
-        claude_card_height = 123.0
-        codex_card_height = 50.0
+        id = "classic"
+        i18n_key = "panel_default_name"
+        claude_card_height = 100.0
+        codex_card_height = 60.0
+
+        def build_view(self, delegate: Any) -> Any:
+            return object()
+
+        def apply_state(self, view: Any, state: menubar_state.PopoverState) -> None:
+            return None
 
         def preferred_size(self) -> tuple[float, float]:
-            return (300.0, 400.0)
+            return (300.0, 500.0)
 
+    monkeypatch.setattr(menubar, "_load_preferences", lambda: {})
     state = menubar._empty_state()
+    panel = FakePanel()
+
+    assert menubar._popover_size(state, panel).height == 500.0
     state.hide_claude = True
-
-    size = menubar._popover_size(state, FakePanel())
-
-    assert size.width == 300.0
-    assert size.height == 277.0
-
-
-def test_compose_title_hides_claude_when_disabled() -> None:
-    state = menubar._empty_state()
-    state.hide_claude = True
-    app = SimpleNamespace(codex_5h_pct=42.0)
-
-    title = menubar.AppDelegate._compose_title(app, state)
-
-    assert title == "📜 42%"
-
-
-def test_compose_title_falls_back_when_all_sections_hidden() -> None:
-    state = menubar._empty_state()
-    state.hide_claude = True
+    assert menubar._popover_size(state, panel).height == 400.0
     state.hide_codex = True
-    app = SimpleNamespace(codex_5h_pct=42.0)
+    assert menubar._popover_size(state, panel).height == 340.0
 
-    title = menubar.AppDelegate._compose_title(app, state)
 
-    assert title == "usage"
+def test_compose_title_hides_providers(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(menubar, "_load_preferences", lambda: {})
+    delegate = menubar.AppDelegate.alloc().initWithMock_interval_(True, 60)
+    delegate.codex_5h_pct = 12.0
+    state = menubar._empty_state()
+    state.claude_session.percent = 50.0
+
+    assert delegate._compose_title(state) == "🐾 50% · 📜 12%"
+    state.hide_claude = True
+    assert delegate._compose_title(state) == "📜 12%"
+    state.hide_codex = True
+    assert delegate._compose_title(state) == "🐾"
+    state.hide_claude = False
+    assert delegate._compose_title(state) == "🐾 50%"
+
+
+def test_compose_title_codex_placeholder_when_claude_hidden(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(menubar, "_load_preferences", lambda: {})
+    delegate = menubar.AppDelegate.alloc().initWithMock_interval_(True, 60)
+    delegate.codex_5h_pct = None
+    state = menubar._empty_state()
+    state.hide_claude = True
+
+    assert delegate._compose_title(state) == "📜 --"
 
 
 def test_project_rows_empty(monkeypatch: pytest.MonkeyPatch) -> None:

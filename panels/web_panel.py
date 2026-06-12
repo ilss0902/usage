@@ -293,17 +293,15 @@ class HTMLPanel:
         width: float = PANEL_WIDTH,
         height: float = PANEL_HEIGHT,
         *,
+        claude_card_height: float,
         codex_card_height: float,
-        claude_card_height: float | None = None,
     ) -> None:
         self.id = panel_id
         self.i18n_key = i18n_key
         self.html_filename = html_filename
         self.width = width
         self.height = height
-        self.claude_card_height = (
-            codex_card_height if claude_card_height is None else claude_card_height
-        )
+        self.claude_card_height = claude_card_height
         self.codex_card_height = codex_card_height
 
     def build_view(self, delegate: Any) -> NSView:

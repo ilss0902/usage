@@ -167,14 +167,14 @@ def _auto_update_check_enabled(prefs: dict[str, Any] | None = None) -> bool:
     return data.get("auto_update_check") is not False
 
 
-def _hide_codex_enabled(prefs: dict[str, Any] | None = None) -> bool:
-    data = _load_preferences() if prefs is None else prefs
-    return data.get("hide_codex_section") is True
-
-
 def _hide_claude_enabled(prefs: dict[str, Any] | None = None) -> bool:
     data = _load_preferences() if prefs is None else prefs
     return data.get("hide_claude_section") is True
+
+
+def _hide_codex_enabled(prefs: dict[str, Any] | None = None) -> bool:
+    data = _load_preferences() if prefs is None else prefs
+    return data.get("hide_codex_section") is True
 
 
 def _quota_notifications_enabled(prefs: dict[str, Any] | None = None) -> bool:
@@ -606,6 +606,32 @@ class AppDelegate(NSObject):
         )
         panel_parent.setSubmenu_(panel_submenu)
         menu.addItem_(panel_parent)
+        # Provider visibility lives in one "Hide Sections ▸" submenu row, grouped
+        # with the panel-themes submenu: both are drill-in rows that shape what
+        # the popover shows.
+        hide_submenu = NSMenu.alloc().initWithTitle_(_t(self.language, "hide_sections_menu"))
+        hide_claude_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            _t(self.language, "claude_name"),
+            "toggleHideClaude:",
+            "",
+        )
+        hide_claude_item.setTarget_(self)
+        hide_claude_item.setState_(1 if _hide_claude_enabled() else 0)
+        hide_submenu.addItem_(hide_claude_item)
+        hide_codex_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            _t(self.language, "codex_name"),
+            "toggleHideCodex:",
+            "",
+        )
+        hide_codex_item.setTarget_(self)
+        hide_codex_item.setState_(1 if _hide_codex_enabled() else 0)
+        hide_submenu.addItem_(hide_codex_item)
+        hide_parent = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            _t(self.language, "hide_sections_menu"), "", ""
+        )
+        hide_parent.setSubmenu_(hide_submenu)
+        menu.addItem_(hide_parent)
+        # Plain on/off switches sit together in the second group.
         menu.addItem_(NSMenuItem.separatorItem())
         launch_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
             _t(self.language, "launch_at_login"),
@@ -615,32 +641,6 @@ class AppDelegate(NSObject):
         launch_item.setTarget_(self)
         launch_item.setState_(1 if login_item.is_enabled() else 0)
         menu.addItem_(launch_item)
-        menu.addItem_(NSMenuItem.separatorItem())
-        auto_update_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            _t(self.language, "auto_update_check"),
-            "toggleAutoUpdateCheck:",
-            "",
-        )
-        auto_update_item.setTarget_(self)
-        auto_update_item.setState_(1 if _auto_update_check_enabled() else 0)
-        menu.addItem_(auto_update_item)
-        menu.addItem_(NSMenuItem.separatorItem())
-        hide_claude_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            _t(self.language, "hide_claude_section"),
-            "toggleHideClaude:",
-            "",
-        )
-        hide_claude_item.setTarget_(self)
-        hide_claude_item.setState_(1 if _hide_claude_enabled() else 0)
-        menu.addItem_(hide_claude_item)
-        hide_codex_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            _t(self.language, "hide_codex_section"),
-            "toggleHideCodex:",
-            "",
-        )
-        hide_codex_item.setTarget_(self)
-        hide_codex_item.setState_(1 if _hide_codex_enabled() else 0)
-        menu.addItem_(hide_codex_item)
         quota_notifications_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
             _t(self.language, "quota_notifications_menu"),
             "toggleQuotaNotifications:",
@@ -683,22 +683,6 @@ class AppDelegate(NSObject):
         except Exception:
             if os.environ.get("USAGE_DEBUG") == "1":
                 logger.warning("toggle launch at login failed", exc_info=True)
-
-    def toggleAutoUpdateCheck_(self, sender: Any) -> None:
-        self._mark_switch_menu_action()
-        prefs = _load_preferences()
-        enabled = not _auto_update_check_enabled(prefs)
-        prefs["auto_update_check"] = enabled
-        _save_preferences(prefs)
-        if hasattr(sender, "setState_"):
-            sender.setState_(1 if enabled else 0)
-        if enabled:
-            thread = threading.Thread(
-                target=self._check_update_in_background,
-                kwargs={"manual": True, "ignore_cooldown": True, "ignore_skipped": True},
-                daemon=True,
-            )
-            thread.start()
 
     def toggleHideClaude_(self, sender: Any) -> None:
         self._mark_switch_menu_action()
@@ -1387,26 +1371,27 @@ class AppDelegate(NSObject):
 
     def _menubar_attributed_title(self, state: PopoverState) -> Any:
         title = NSMutableAttributedString.alloc().init()
-        show_claude = not state.hide_claude
-        show_codex = not state.hide_codex and self.codex_5h_pct is not None
-        if not show_claude and not show_codex:
-            title.appendAttributedString_(self._menubar_text_string("usage"))
-            return title
-        claude_percent = (
-            "--"
-            if state.claude_session.percent is None
-            else f"{_format_percent(state.claude_session.percent)}%"
-        )
-        if show_claude:
+        if not state.hide_claude:
+            claude_percent = (
+                "--"
+                if state.claude_session.percent is None
+                else f"{_format_percent(state.claude_session.percent)}%"
+            )
             title.appendAttributedString_(_menubar_icon_attachment_string(_claude_menubar_icon()))
             title.appendAttributedString_(self._menubar_text_string(f" {claude_percent}"))
-        if show_codex:
-            if show_claude:
+        if not state.hide_codex and (self.codex_5h_pct is not None or state.hide_claude):
+            codex_percent = (
+                "--"
+                if self.codex_5h_pct is None
+                else f"{_format_percent(float(self.codex_5h_pct))}%"
+            )
+            if not state.hide_claude:
                 title.appendAttributedString_(self._menubar_text_string(" · "))
             title.appendAttributedString_(_menubar_icon_attachment_string(_codex_menubar_icon()))
-            title.appendAttributedString_(
-                self._menubar_text_string(f" {_format_percent(float(self.codex_5h_pct))}%"),
-            )
+            title.appendAttributedString_(self._menubar_text_string(f" {codex_percent}"))
+        if title.length() == 0:
+            # Both providers hidden: keep a recognizable, clickable status item.
+            title.appendAttributedString_(_menubar_icon_attachment_string(_claude_menubar_icon()))
         return title
 
     def _set_button_title(self, state: PopoverState) -> None:
@@ -1417,14 +1402,21 @@ class AppDelegate(NSObject):
     def _compose_title(self, state: PopoverState) -> str:
         parts: list[str] = []
         if not state.hide_claude:
-            parts.append(
-                "🐾 --"
+            claude = (
+                "--"
                 if state.claude_session.percent is None
-                else f"🐾 {_format_percent(state.claude_session.percent)}%"
+                else f"{_format_percent(state.claude_session.percent)}%"
             )
-        if not state.hide_codex and self.codex_5h_pct is not None:
-            parts.append(f"📜 {_format_percent(float(self.codex_5h_pct))}%")
-        return " · ".join(parts) if parts else "usage"
+            parts.append(f"🐾 {claude}")
+        if not state.hide_codex and (self.codex_5h_pct is not None or state.hide_claude):
+            codex = (
+                "--"
+                if self.codex_5h_pct is None
+                else f"{_format_percent(float(self.codex_5h_pct))}%"
+            )
+            parts.append(f"📜 {codex}")
+        # Both providers hidden: keep a recognizable, clickable status item.
+        return " · ".join(parts) if parts else "🐾"
 
 
 def run_app(mock: bool = False, interval: int = 60) -> None:
